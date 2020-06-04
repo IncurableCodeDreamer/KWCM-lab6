@@ -50,8 +50,47 @@ class lab6Widget(ScriptedLoadableModuleWidget):
     parametersCollapsibleButton.text = "Parameters"
     self.layout.addWidget(parametersCollapsibleButton)
 
+    parametersCollapsibleButtonNew = ctk.ctkCollapsibleButton()
+    parametersCollapsibleButtonNew.text = "Parameters New Widget"
+    self.layout.addWidget(parametersCollapsibleButtonNew)
+
     # Layout within the dummy collapsible button
     parametersFormLayout = qt.QFormLayout(parametersCollapsibleButton)
+    parametersFormLayoutNew = qt.QFormLayout(parametersCollapsibleButtonNew)
+
+    #
+    # input model
+    #
+    self.inputSelectorModel = slicer.qMRMLNodeComboBox()
+    self.inputSelectorModel.nodeTypes = ["vtkMRMLModelNode"]
+    self.inputSelectorModel.selectNodeUponCreation = True
+    self.inputSelectorModel.addEnabled = False
+    self.inputSelectorModel.removeEnabled = False
+    self.inputSelectorModel.noneEnabled = False
+    self.inputSelectorModel.showHidden = False
+    self.inputSelectorModel.showChildNodeTypes = False
+    self.inputSelectorModel.setMRMLScene( slicer.mrmlScene )
+    self.inputSelectorModel.setToolTip( "Pick the input model to the algorithm." )
+    parametersFormLayoutNew.addRow("Input Model: ", self.inputSelectorModel)
+
+    #
+    # opacity value
+    #
+    self.modelOpacitySliderWidget = ctk.ctkSliderWidget()
+    self.modelOpacitySliderWidget.singleStep = 0.1
+    self.modelOpacitySliderWidget.minimum = 0
+    self.modelOpacitySliderWidget.maximum = 100
+    self.modelOpacitySliderWidget.value = 050
+    self.modelOpacitySliderWidget.setToolTip("Set opacity value.")
+    parametersFormLayoutNew.addRow("Model Opacity", self.modelOpacitySliderWidget)
+
+    #
+    # visibility button
+    #
+    self.ChangeVisibilityButton = qt.QPushButton("Show/Hide")
+    self.ChangeVisibilityButton.toolTip = "Show/hide model."
+    self.ChangeVisibilityButton.enabled = True
+    parametersFormLayoutNew.addRow(self.ChangeVisibilityButton)
 
     #
     # input volume selector
@@ -107,13 +146,15 @@ class lab6Widget(ScriptedLoadableModuleWidget):
     #
     self.applyButton = qt.QPushButton("Apply")
     self.applyButton.toolTip = "Run the algorithm."
-    self.applyButton.enabled = False
+    self.applyButton.enabled = True
     parametersFormLayout.addRow(self.applyButton)
 
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.modelOpacitySliderWidget.connect("valueChanged(double)", self.onOpacityChange)
+    self.ChangeVisibilityButton.connect('clicked(bool)', self.onChangeVisibilityButton)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -133,6 +174,15 @@ class lab6Widget(ScriptedLoadableModuleWidget):
     imageThreshold = self.imageThresholdSliderWidget.value
     logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), imageThreshold, enableScreenshotsFlag)
 
+  def onChangeVisibilityButton(self):
+    logic = lab6Logic()
+    logic.changeVisibility(self.inputSelectorModel.currentNode())
+
+  def onOpacityChange(self):
+    logic = lab6Logic()
+    opacity = self.modelOpacitySliderWidget.value
+    logic.setOpacity(self.inputSelectorModel.currentNode(), opacity/100)
+
 #
 # lab6Logic
 #
@@ -146,6 +196,16 @@ class lab6Logic(ScriptedLoadableModuleLogic):
   Uses ScriptedLoadableModuleLogic base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
+
+  def changeVisibility(self,model):
+    """ Change visibility """
+    vis = model.GetDisplayNode()
+    vis.SetVisibility(not vis.GetVisibility())
+
+  def setOpacity(self,model,opacity):
+    """ Change opacity """
+    vis = model.GetDisplayNode()
+    vis.SetOpacity(opacity)
 
   def hasImageData(self,volumeNode):
     """This is an example logic method that
